@@ -38,6 +38,12 @@ if ( ! class_exists( 'YoutubePreroll' ) ) {
 		protected $options = array();
 
 		/**
+		 * List of options to be used by Javascript.
+		 * @var array
+		 */
+		protected $local_options = array();
+
+		/**
 		 * List of settings displayed on the admin settings page.
 		 * @var array
 		 */
@@ -157,76 +163,22 @@ if ( ! class_exists( 'YoutubePreroll' ) ) {
 	 			$video = substr($video, 1);
 	 		}
 
-	 		// Output the terminal...
-	        // TODO: playerVars: { 'autoplay': 1, 'controls': 1 },
+			$local_options['preroll'] = $preroll;
+			$local_options['mainroll'] = $video;
+			$local_options['width'] = $width;
+			$local_options['height'] = $height;
+
+	 		// Output the terminal...	        
 			ob_start();
 			?>
 
 
 <p>Player below</p>
-<div id="player" class="<?php esc_attr_e( implode( ' ', $classes ) );?>"<?php echo ( count( $styles ) > 0 ? ' style="' . implode( ' ', $styles ) . '"' : '' );?>></div>
+<script>youtube_preroll_options = <?php echo json_encode($local_options);?>;</script>
+<div id="youtube_preroll_player" class="<?php esc_attr_e( implode( ' ', $classes ) );?>"<?php echo ( count( $styles ) > 0 ? ' style="' . implode( ' ', $styles ) . '"' : '' );?>></div>
 <p><?php echo $content; ?></p>
 
-<script>
-  var seenPreroll = false;
-  var preroll = '<?php echo esc_attr($preroll) ?>';
-  var mainroll = '<?php echo esc_attr($video) ?>';
-  var playingId = '';
-  console.log('YoutubePreroll() - preroll:['+preroll+'] mainroll:['+mainroll+']');
 
-  var tag = document.createElement('script');
-  tag.src = "//www.youtube.com/iframe_api";
-  var firstScriptTag = document.getElementsByTagName('script')[0];
-  firstScriptTag.parentNode.insertBefore(tag, firstScriptTag);
-  console.log('YoutubePreroll() - API script inserted');
-
-  var player;
-  window.onYouTubeIframeAPIReady = function() {
-    console.log('onYouTubeIframeAPIReady()');
-    player = new YT.Player('player', {
-      <?php echo ($width>0) ? "width:'" . esc_attr($width) . "'," : '' ?>
-      <?php echo ($height>0) ? "height:'" . esc_attr($height) . "',"  : '' ?>
-      videoId: mainroll,
-      events: {
-        'onStateChange': function(event) {
-          if (event.data==1 && seenPreroll==false) {
-            player.pauseVideo();
-            player.loadVideoById(preroll);
-            playingId=preroll;
-            seenPreroll=true;
-            player.playVideo();
-          } else if (event.data==0 && playingId==preroll) {
-            player.loadVideoById(mainroll);
-            playingId=mainroll;
-            player.playVideo();
-          }
-        }
-      }
-    });
-  }
-
-  setTimeout(function(){
-    console.log('Timeout');
-    if (typeof(player) == 'undefined'){
-      console.log('Timeout - calling onYouTubeIframeAPIReady()');
-      window.onYouTubeIframeAPIReady();
-    } else {
-      console.log('Timeout', player);
-    }
-  }, 3000);
-
-  setTimeout(function(){
-    console.log('Timeout2');
-    if (typeof(player) == 'undefined'){
-      console.log('Timeout2 - calling onYouTubeIframeAPIReady()');
-      window.onYouTubeIframeAPIReady();
-    } else {
-      console.log('Timeout2', player);
-    }
-  }, 9000);  
-
-  console.log('YoutubePreroll() - preparation done');
-</script>
 
 
 
@@ -364,8 +316,12 @@ if ( ! class_exists( 'YoutubePreroll' ) ) {
 	 		// Define the URL path to the plugin...
 			$plugin_path = plugin_dir_url( __FILE__ );
 
+			wp_register_script( 'youtube-iframe-api', 'https://www.youtube.com/iframe_api' );
+			wp_register_script( 'youtube-preroll', $plugin_path.'youtube-preroll.js', array( 'youtube-iframe-api' ));
+			//wp_localize_script( 'youtube-preroll', 'youtube_preroll_options', $local_options );
+
 	 		// Enqueue the scripts if not already...
-			//wp_enqueue_script( 'youtube', 'https://www.youtube.com/iframe_api', array() , '1', true );
+			wp_enqueue_script( 'youtube-preroll' );  
 		}
 
 	}
